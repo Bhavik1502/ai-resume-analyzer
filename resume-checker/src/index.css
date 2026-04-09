@@ -1,0 +1,10 @@
+/* Reset default browser styles so nothing looks weird */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0f0f13;
+}
