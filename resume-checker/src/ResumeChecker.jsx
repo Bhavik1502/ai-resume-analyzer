@@ -1,3 +1,6 @@
+import jsPDF from "jspdf"
+import { collection, addDoc } from "firebase/firestore"
+import { db } from "./firebase"
 import { useState } from "react"
 import Groq from "groq-sdk"
 import * as pdfjsLib from "pdfjs-dist"
@@ -5,7 +8,7 @@ import worker from "pdfjs-dist/build/pdf.worker?url"
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = worker
 
-function ResumeChecker() {
+function ResumeChecker({ user, role }) {
 
   const [resumeText, setResumeText] = useState("")
   const [fileName, setFileName] = useState("")
@@ -14,13 +17,14 @@ function ResumeChecker() {
   const [loading, setLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [error, setError] = useState(null)
-
-  // Chat state
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState("")
   const [chatLoading, setChatLoading] = useState(false)
 
-  // Helper to create Groq client — reused in both functions
+  // Rewrite resume state
+  const [rewrittenResume, setRewrittenResume] = useState(null)
+  const [rewriteLoading, setRewriteLoading] = useState(false)
+
   function getGroq() {
     return new Groq({
       apiKey: import.meta.env.VITE_GROQ_API_KEY,
@@ -75,7 +79,7 @@ function ResumeChecker() {
     setLoading(true)
     setFeedback(null)
     setError(null)
-    // Reset chat when doing a new analysis
+    setRewrittenResume(null)
     setChatMessages([])
 
     try {
@@ -117,6 +121,15 @@ function ResumeChecker() {
       const parsed = JSON.parse(cleaned)
       setFeedback(parsed)
 
+      // Save to Firestore
+      await addDoc(collection(db, "analyses"), {
+        userId: user.uid,
+        fileName: fileName,
+        feedback: parsed,
+        resumeText: resumeText,
+        createdAt: new Date().toISOString(),
+      })
+
     } catch (err) {
       console.error(err)
       setError("Something went wrong. Please check your API key and try again.")
@@ -125,11 +138,78 @@ function ResumeChecker() {
     setLoading(false)
   }
 
-  // Handles sending a chat message to the AI
+  // Rewrites the entire resume optimized for ATS
+  async function handleRewriteResume() {
+    setRewriteLoading(true)
+    setRewrittenResume(null)
+
+    try {
+      const groq = getGroq()
+
+      const result = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert resume writer and ATS specialist. 
+            Rewrite the provided resume to be fully optimized for ATS systems.
+            Make it professional, impactful and tailored to pass ATS filters.
+            Keep the same person's experience but improve everything else.
+            Return ONLY the rewritten resume text, no extra commentary.`
+          },
+          {
+            role: "user",
+            content: `Here is my original resume:
+            ${resumeText}
+
+            Here are the ATS issues found:
+            ${feedback.atsIssues.join(", ")}
+
+            Here are the improvements suggested:
+            ${feedback.improvements.join(", ")}
+
+            Here are the missing keywords:
+            ${feedback.keywords.join(", ")}
+
+            Please rewrite my entire resume fixing all these issues, adding the missing keywords naturally, and making it fully ATS optimized.`
+          }
+        ],
+        model: "llama-3.3-70b-versatile",
+      })
+
+      const text = result.choices[0].message.content
+      setRewrittenResume(text)
+
+    } catch (err) {
+      console.error(err)
+    }
+
+    setRewriteLoading(false)
+  }
+
+  // Downloads the rewritten resume as a PDF
+  function handleDownloadPDF() {
+    const doc = new jsPDF()
+    doc.setFontSize(11)
+    doc.setFont("helvetica", "normal")
+    // splitTextToSize breaks long text into lines that fit the page
+    const lines = doc.splitTextToSize(rewrittenResume, 180)
+    doc.text(lines, 15, 20)
+    doc.save("optimized-resume.pdf")
+  }
+
+  // Downloads the rewritten resume as PDF from chat
+  function handleDownloadPDFFromText(text) {
+    const doc = new jsPDF()
+    doc.setFontSize(11)
+    doc.setFont("helvetica", "normal")
+    const lines = doc.splitTextToSize(text, 180)
+    doc.text(lines, 15, 20)
+    doc.save("updated-resume.pdf")
+  }
+
   async function handleChatSend() {
     if (!chatInput.trim()) return
 
-    // Add user message to chat
     const userMessage = { role: "user", content: chatInput }
     const updatedMessages = [...chatMessages, userMessage]
     setChatMessages(updatedMessages)
@@ -142,7 +222,6 @@ function ResumeChecker() {
       const result = await groq.chat.completions.create({
         messages: [
           {
-            // System message gives AI the full context of the resume and analysis
             role: "system",
             content: `You are an expert career coach and resume specialist.
             You have already analyzed this resume and given it a score of ${feedback?.score}/100 and an ATS score of ${feedback?.atsScore}/100.
@@ -152,9 +231,10 @@ function ResumeChecker() {
             
             Help the user improve their resume, ATS score, and job application.
             When asked to rewrite something, provide the full rewritten version.
-            Keep responses clear, specific and actionable.`
+            Keep responses clear, specific and actionable.
+            
+            IMPORTANT: If the user asks you to rewrite or update their resume, provide the complete rewritten resume and end your response with the marker: [RESUME_DOWNLOAD_READY]`
           },
-          // Pass full chat history so AI remembers the whole conversation
           ...updatedMessages.map(m => ({
             role: m.role === "ai" ? "assistant" : "user",
             content: m.content
@@ -164,7 +244,17 @@ function ResumeChecker() {
       })
 
       const text = result.choices[0].message.content
-      setChatMessages([...updatedMessages, { role: "ai", content: text }])
+
+      // Check if AI rewrote the resume — if so show download button
+      const hasResume = text.includes("[RESUME_DOWNLOAD_READY]")
+      const cleanText = text.replace("[RESUME_DOWNLOAD_READY]", "").trim()
+
+      setChatMessages([...updatedMessages, {
+        role: "ai",
+        content: cleanText,
+        // This flag tells us to show a download button for this message
+        hasDownload: hasResume,
+      }])
 
     } catch (err) {
       console.error(err)
@@ -197,7 +287,7 @@ function ResumeChecker() {
       border: "1px solid #3730a3",
     },
     heading: {
-      fontSize: 36,
+      fontSize: "clamp(24px, 5vw, 36px)",
       fontWeight: 700,
       margin: "0 0 8px",
       background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
@@ -234,19 +324,9 @@ function ResumeChecker() {
       transition: "border-color 0.2s",
       background: "#0f0f13",
     },
-    uploadIcon: {
-      fontSize: 36,
-      marginBottom: 12,
-    },
-    uploadText: {
-      fontSize: 15,
-      color: "#9ca3af",
-      marginBottom: 6,
-    },
-    uploadSubtext: {
-      fontSize: 13,
-      color: "#4b5563",
-    },
+    uploadIcon: { fontSize: 36, marginBottom: 12 },
+    uploadText: { fontSize: 15, color: "#9ca3af", marginBottom: 6 },
+    uploadSubtext: { fontSize: 13, color: "#4b5563" },
     fileSuccess: {
       display: "flex",
       alignItems: "center",
@@ -271,15 +351,6 @@ function ResumeChecker() {
       boxSizing: "border-box",
       outline: "none",
     },
-    spinner: {
-  width: 18,
-  height: 18,
-  border: "2px solid rgba(255,255,255,0.3)",
-  borderTop: "2px solid #fff",
-  borderRadius: "50%",
-  display: "inline-block",
-  marginRight: 8,
-},
     button: {
       width: "100%",
       padding: "14px",
@@ -386,14 +457,13 @@ function ResumeChecker() {
     <div style={styles.page}>
       <div style={styles.container}>
 
-        {/* Header */}
         <div style={styles.badge}>✦ AI Powered by Groq</div>
         <h1 style={styles.heading}>AI Resume Analyzer</h1>
         <p style={styles.subheading}>
           Upload your resume and get instant AI feedback, ATS score, and rewrite suggestions
         </p>
 
-        {/* PDF Upload card */}
+        {/* PDF Upload */}
         <div style={styles.card}>
           <label style={styles.label}>Upload Resume (PDF)</label>
           <div
@@ -425,7 +495,7 @@ function ResumeChecker() {
           )}
         </div>
 
-        {/* Optional job description */}
+        {/* Job description */}
         <div style={styles.card}>
           <label style={styles.label}>Job Description (optional)</label>
           <p style={{ fontSize: 13, color: "#4b5563", marginBottom: 10 }}>
@@ -447,15 +517,14 @@ function ResumeChecker() {
           style={styles.button}
         >
           {loading ? (
-  <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-    <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-    <span style={{ width:18, height:18, border:"2px solid rgba(255,255,255,0.3)", borderTop:"2px solid #fff", borderRadius:"50%", display:"inline-block", marginRight:8, animation:"spin 0.8s linear infinite" }} />
-    Analysing your resume...
-  </span>
-) : "Analyse my resume"}
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+              <span style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid #fff", borderRadius: "50%", display: "inline-block", marginRight: 8, animation: "spin 0.8s linear infinite" }} />
+              Analysing your resume...
+            </span>
+          ) : "Analyse my resume"}
         </button>
 
-        {/* Error box */}
         {error && <div style={styles.errorBox}>{error}</div>}
 
         {/* Results */}
@@ -515,6 +584,99 @@ function ResumeChecker() {
               <div key={i} style={styles.improvementItem}>⚠ {issue}</div>
             ))}
 
+            {/* Rewrite resume button */}
+            <button
+              onClick={handleRewriteResume}
+              disabled={rewriteLoading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: rewriteLoading ? "#1f1f2e" : "linear-gradient(90deg, #059669, #0891b2)",
+                color: rewriteLoading ? "#4b5563" : "#fff",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: rewriteLoading ? "not-allowed" : "pointer",
+                marginTop: 16,
+                letterSpacing: 0.3,
+              }}
+            >
+              {rewriteLoading ? (
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                  <span style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid #fff", borderRadius: "50%", display: "inline-block", marginRight: 8, animation: "spin 0.8s linear infinite" }} />
+                  Rewriting your resume for ATS...
+                </span>
+              ) : "Rewrite my resume for ATS"}
+            </button>
+
+            {/* Rewritten resume output */}
+            {rewrittenResume && (
+              <div style={{
+                marginTop: 16,
+                background: "#0f0f13",
+                border: "1px solid #059669",
+                borderRadius: 12,
+                padding: 20,
+              }}>
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#059669" }}>
+                    ATS Optimized Resume
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {/* Copy button */}
+                    <button
+                      onClick={() => navigator.clipboard.writeText(rewrittenResume)}
+                      style={{
+                        background: "#1e1b4b",
+                        border: "1px solid #3730a3",
+                        borderRadius: 8,
+                        padding: "6px 14px",
+                        fontSize: 13,
+                        color: "#a78bfa",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Copy
+                    </button>
+                    {/* Download PDF button */}
+                    <button
+                      onClick={handleDownloadPDF}
+                      style={{
+                        background: "linear-gradient(90deg, #059669, #0891b2)",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "6px 14px",
+                        fontSize: 13,
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Download PDF
+                    </button>
+                  </div>
+                </div>
+
+                <pre style={{
+                  fontSize: 13,
+                  color: "#d1d5db",
+                  lineHeight: 1.8,
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "inherit",
+                  margin: 0,
+                }}>
+                  {rewrittenResume}
+                </pre>
+              </div>
+            )}
+
             {/* Keywords */}
             <div style={styles.sectionTitle}>Keywords Found</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -561,16 +723,15 @@ function ResumeChecker() {
               </>
             )}
 
-            {/* ── CHAT SECTION ── */}
+            {/* Chat section */}
             <div style={styles.sectionTitle}>Chat with AI about your resume</div>
 
-            {/* Suggested quick questions */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
               {[
                 "How can I improve my ATS score?",
                 "Rewrite my summary section",
                 "What keywords am I missing?",
-                "What jobs suit my profile?",
+                "Update my entire resume",
               ].map((suggestion, i) => (
                 <div
                   key={i}
@@ -590,7 +751,7 @@ function ResumeChecker() {
               ))}
             </div>
 
-            {/* Chat messages window */}
+            {/* Chat messages */}
             <div style={{
               background: "#0f0f13",
               border: "1px solid #2a2a35",
@@ -601,14 +762,12 @@ function ResumeChecker() {
               maxHeight: 400,
               overflowY: "auto",
             }}>
-              {/* Placeholder when no messages yet */}
               {chatMessages.length === 0 && (
                 <div style={{ color: "#4b5563", fontSize: 14 }}>
-                  Ask anything — "How can I improve my ATS score?" or "Rewrite my skills section"
+                  Ask anything — or click "Update my entire resume" to get a downloadable PDF
                 </div>
               )}
 
-              {/* Each chat message */}
               {chatMessages.map((msg, i) => (
                 <div key={i} style={{
                   marginBottom: 16,
@@ -616,7 +775,6 @@ function ResumeChecker() {
                   flexDirection: "column",
                   alignItems: msg.role === "user" ? "flex-end" : "flex-start",
                 }}>
-                  {/* You / AI Coach label */}
                   <div style={{
                     fontSize: 11,
                     color: "#4b5563",
@@ -626,7 +784,6 @@ function ResumeChecker() {
                     {msg.role === "user" ? "You" : "AI Coach"}
                   </div>
 
-                  {/* Message bubble */}
                   <div style={{
                     maxWidth: "85%",
                     padding: "12px 16px",
@@ -637,15 +794,33 @@ function ResumeChecker() {
                     color: msg.role === "user" ? "#fff" : "#c4b5fd",
                     borderBottomRightRadius: msg.role === "user" ? 4 : 12,
                     borderBottomLeftRadius: msg.role === "ai" ? 4 : 12,
-                    // Preserves line breaks in AI responses
                     whiteSpace: "pre-wrap",
                   }}>
                     {msg.content}
                   </div>
+
+                  {/* Download button appears on AI messages that contain a rewritten resume */}
+                  {msg.role === "ai" && msg.hasDownload && (
+                    <button
+                      onClick={() => handleDownloadPDFFromText(msg.content)}
+                      style={{
+                        marginTop: 8,
+                        padding: "8px 16px",
+                        background: "linear-gradient(90deg, #059669, #0891b2)",
+                        border: "none",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Download as PDF
+                    </button>
+                  )}
                 </div>
               ))}
 
-              {/* Typing indicator */}
               {chatLoading && (
                 <div style={{ color: "#4b5563", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7c3aed" }} />
@@ -654,7 +829,7 @@ function ResumeChecker() {
               )}
             </div>
 
-            {/* Chat input row */}
+            {/* Chat input */}
             <div style={{ display: "flex", gap: 8 }}>
               <input
                 value={chatInput}
@@ -689,7 +864,7 @@ function ResumeChecker() {
                   cursor: chatInput.trim() && !chatLoading ? "pointer" : "not-allowed",
                 }}
               >
-                Send →
+                Send
               </button>
             </div>
 
