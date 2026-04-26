@@ -8,14 +8,12 @@ function Login() {
     try {
       const result = await signInWithPopup(auth, googleProvider)
       const user = result.user
-
       await setDoc(doc(db, "users", user.uid), {
         name: user.displayName,
         email: user.email,
         photo: user.photoURL,
         createdAt: new Date().toISOString(),
       }, { merge: true })
-
     } catch (err) {
       console.error(err)
     }
@@ -26,150 +24,124 @@ function Login() {
       minHeight: "100vh",
       background: "#080810",
       display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       fontFamily: "'Inter', sans-serif",
+      padding: "1rem",
     }}>
-
-      {/* Left side — branding */}
       <div style={{
-        flex: 1,
-        background: "linear-gradient(135deg, #0f0a2e 0%, #0a0a1a 100%)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: "60px",
-        borderRight: "1px solid #1e1e2e",
+        width: "100%",
+        maxWidth: 420,
+        background: "#0d0d14",
+        border: "1px solid #1e1e2e",
+        borderRadius: 20,
+        padding: "40px 32px",
+        textAlign: "center",
       }}>
 
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 60 }}>
-          <div style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "linear-gradient(135deg, #7c3aed, #2563eb)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontSize: 18,
-            fontWeight: 700,
-          }}>
-            R
-          </div>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>ResumeAI</span>
+        <div style={{
+          width: 56,
+          height: 56,
+          borderRadius: 14,
+          background: "linear-gradient(135deg, #7c3aed, #2563eb)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 24,
+          fontWeight: 700,
+          color: "#fff",
+          margin: "0 auto 20px",
+        }}>
+          R
         </div>
 
-        {/* Headline */}
+        {/* Heading */}
         <h1 style={{
-          fontSize: 42,
-          fontWeight: 800,
-          color: "#fff",
-          lineHeight: 1.2,
-          marginBottom: 20,
+          fontSize: 26,
+          fontWeight: 700,
+          background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          marginBottom: 8,
         }}>
-          Land your dream job with AI
+          ResumeAI
         </h1>
 
-        <p style={{ color: "#6b7280", fontSize: 16, lineHeight: 1.8, maxWidth: 400 }}>
-          Get instant ATS score, AI-powered feedback and a fully rewritten resume in seconds.
+        <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 32, lineHeight: 1.6 }}>
+          AI-powered resume analysis, ATS scoring and career coaching
         </p>
 
         {/* Feature list */}
-        <div style={{ marginTop: 48, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ marginBottom: 32, textAlign: "left" }}>
           {[
             "ATS score and compatibility check",
             "AI rewrite suggestions",
             "Job description matching",
             "Chat with AI career coach",
+            "Recruiter analytics dashboard",
           ].map((feature, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div key={i} style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 10,
+            }}>
               <div style={{
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 borderRadius: "50%",
                 background: "linear-gradient(135deg, #7c3aed, #2563eb)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 11,
+                fontSize: 10,
                 color: "#fff",
                 flexShrink: 0,
               }}>
                 v
               </div>
-              <span style={{ color: "#9ca3af", fontSize: 14 }}>{feature}</span>
+              <span style={{ fontSize: 13, color: "#9ca3af" }}>{feature}</span>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Right side — login form */}
-      <div style={{
-        width: 480,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px",
-        flexShrink: 0,
-      }}>
-        <div style={{ width: "100%", maxWidth: 360 }}>
+        {/* Divider */}
+        <div style={{
+          height: 1,
+          background: "#1e1e2e",
+          marginBottom: 24,
+        }} />
 
-          <h2 style={{
-            fontSize: 26,
-            fontWeight: 700,
-            color: "#fff",
-            marginBottom: 8,
-          }}>
-            Welcome back
-          </h2>
-
-          <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 32 }}>
-            Sign in to continue to ResumeAI
-          </p>
-
-          {/* Google Sign In button */}
-          <button
-            onClick={handleGoogleLogin}
-            style={{
-              width: "100%",
-              padding: "14px 24px",
-              background: "#fff",
-              color: "#1f1f1f",
-              border: "none",
-              borderRadius: 12,
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              marginBottom: 24,
-            }}
-          >
-            <span style={{ fontSize: 18 }}>G</span>
-            Continue with Google
-          </button>
-
-          {/* Divider */}
-          <div style={{
+        {/* Google Sign In button */}
+        <button
+          onClick={handleGoogleLogin}
+          style={{
+            width: "100%",
+            padding: "14px 24px",
+            background: "#fff",
+            color: "#1f1f1f",
+            border: "none",
+            borderRadius: 12,
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            gap: 12,
-            marginBottom: 24,
-          }}>
-            <div style={{ flex: 1, height: 1, background: "#1e1e2e" }} />
-            <span style={{ color: "#4b5563", fontSize: 12 }}>100% free</span>
-            <div style={{ flex: 1, height: 1, background: "#1e1e2e" }} />
-          </div>
+            justifyContent: "center",
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
+          <span style={{ fontSize: 18 }}>G</span>
+          Continue with Google
+        </button>
 
-          <p style={{ color: "#4b5563", fontSize: 12, textAlign: "center", lineHeight: 1.6 }}>
-            By signing in you agree to our terms of service. No credit card required.
-          </p>
+        <p style={{ color: "#4b5563", fontSize: 12, lineHeight: 1.6 }}>
+          Free to use. No credit card required.
+        </p>
 
-        </div>
       </div>
-
     </div>
   )
 }
