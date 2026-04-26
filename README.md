@@ -3,7 +3,7 @@
 An AI-powered resume analysis tool built with React, Firebase, and Groq AI. Helps students optimize their resumes for ATS systems and gives recruiters deep insights into candidate profiles.
 
 ## Live Demo
-[Add your Vercel URL here after deploying]
+[https://ai-resume-analyzer-m92r-dcg4xmk62-bhavik1502s-projects.vercel.app/]
 
 ## Features
 
