@@ -75,14 +75,18 @@ function RecruiterDashboard({ user }) {
             "keywords": <number 0-100>
           },
           "nlp": {
-            "sentiment": "<Positive/Neutral/Negative>",
-            "tone": "<Professional/Casual/Technical/Creative>",
-            "clarity": <number 0-100>,
-            "wordCount": <number>,
-            "avgSentenceLength": <number>,
-            "passiveVoice": "<Low/Medium/High>",
-            "actionVerbs": ["<verb1>", "<verb2>", "<verb3>", "<verb4>", "<verb5>"]
-          },
+  "sentiment": "<Positive/Neutral/Negative>",
+  "tone": "<Professional/Casual/Technical/Creative>",
+  "clarity": <number 0-100>,
+  "quantifiableImpact": {
+    "count": <number of numerical achievements found>,
+    "examples": ["<example 1>", "<example 2>", "<example 3>"]
+  },
+  "temporalProgression": {
+    "rating": "<Strong/Moderate/Weak>",
+    "summary": "<2 sentence summary of career growth and date logic>"
+  }
+},
           "candidateSummary": "<3-4 sentence professional assessment of the candidate>"
         }
 
@@ -302,49 +306,85 @@ function RecruiterDashboard({ user }) {
             </div>
 
             {/* NLP Analysis */}
-            <div style={{
-              background: "#0d0d14", border: "1px solid #1e1e2e",
-              borderRadius: 12, padding: 20,
-            }}>
-              <div style={{
-                fontSize: 11, fontWeight: 600, color: "#7c3aed",
-                textTransform: "uppercase", letterSpacing: 1, marginBottom: 16,
-              }}>
-                NLP Analysis
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
-                {[
-                  { label: "Sentiment", value: analysis.nlp.sentiment },
-                  { label: "Tone", value: analysis.nlp.tone },
-                  { label: "Passive Voice", value: analysis.nlp.passiveVoice },
-                  { label: "Word Count", value: analysis.nlp.wordCount },
-                  { label: "Avg Sentence Length", value: analysis.nlp.avgSentenceLength + " words" },
-                  { label: "Clarity Score", value: analysis.nlp.clarity + "/100" },
-                ].map((item, i) => (
-                  <div key={i} style={{
-                    background: "#080810", border: "1px solid #1e1e2e",
-                    borderRadius: 8, padding: "12px 14px",
-                  }}>
-                    <div style={{ fontSize: 11, color: "#4b5563", marginBottom: 4 }}>{item.label}</div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#e8e8f0" }}>{item.value}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
-                Strong action verbs used
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {analysis.nlp.actionVerbs.map((verb, i) => (
-                  <div key={i} style={{
-                    background: "#1e1b4b", border: "1px solid #3730a3",
-                    borderRadius: 20, padding: "4px 12px",
-                    fontSize: 13, color: "#a78bfa",
-                  }}>
-                    {verb}
-                  </div>
-                ))}
-              </div>
-            </div>
+<div style={{
+  background: "#0d0d14", border: "1px solid #1e1e2e",
+  borderRadius: 12, padding: 20,
+}}>
+  <div style={{
+    fontSize: 11, fontWeight: 600, color: "#7c3aed",
+    textTransform: "uppercase", letterSpacing: 1, marginBottom: 16,
+  }}>
+    NLP Analysis
+  </div>
+
+  {/* Top stats */}
+  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+    {[
+      { label: "Sentiment", value: analysis.nlp.sentiment },
+      { label: "Tone", value: analysis.nlp.tone },
+      { label: "Clarity Score", value: analysis.nlp.clarity + "/100" },
+    ].map((item, i) => (
+      <div key={i} style={{
+        background: "#080810", border: "1px solid #1e1e2e",
+        borderRadius: 8, padding: "12px 14px",
+      }}>
+        <div style={{ fontSize: 11, color: "#4b5563", marginBottom: 4 }}>{item.label}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "#e8e8f0" }}>{item.value}</div>
+      </div>
+    ))}
+  </div>
+
+  {/* Quantifiable Impact */}
+  <div style={{
+    background: "#080810", border: "1px solid #1e1e2e",
+    borderRadius: 10, padding: 16, marginBottom: 12,
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 600, color: "#7c3aed", marginBottom: 8 }}>
+      Quantifiable Impact
+    </div>
+    <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 10 }}>
+      {analysis.nlp.quantifiableImpact.count} numerical achievements found
+    </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {analysis.nlp.quantifiableImpact.examples.map((ex, i) => (
+        <div key={i} style={{
+          background: "#1e1b4b", border: "1px solid #3730a3",
+          borderRadius: 8, padding: "8px 12px",
+          fontSize: 13, color: "#a78bfa",
+        }}>
+          {ex}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* Temporal Progression */}
+  <div style={{
+    background: "#080810", border: "1px solid #1e1e2e",
+    borderRadius: 10, padding: 16,
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 600, color: "#7c3aed", marginBottom: 8 }}>
+      Temporal Progression
+    </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+      <div style={{
+        background: analysis.nlp.temporalProgression.rating === "Strong" ? "#0f2a1a" : analysis.nlp.temporalProgression.rating === "Moderate" ? "#2a1a0a" : "#2a0a0a",
+        border: `1px solid ${analysis.nlp.temporalProgression.rating === "Strong" ? "#065f46" : analysis.nlp.temporalProgression.rating === "Moderate" ? "#92400e" : "#7f1d1d"}`,
+        borderRadius: 20,
+        padding: "4px 12px",
+        fontSize: 12,
+        color: analysis.nlp.temporalProgression.rating === "Strong" ? "#34d399" : analysis.nlp.temporalProgression.rating === "Moderate" ? "#fbbf24" : "#f87171",
+        fontWeight: 600,
+      }}>
+        {analysis.nlp.temporalProgression.rating}
+      </div>
+    </div>
+    <p style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.7, margin: 0 }}>
+      {analysis.nlp.temporalProgression.summary}
+    </p>
+  </div>
+
+</div>
 
           </div>
         )}
