@@ -1,7 +1,7 @@
 import { signOut } from "firebase/auth"
 import { auth } from "./firebase"
 
-function Sidebar({ user, role, activePage, setActivePage }) {
+function Sidebar({ user, role, activePage, setActivePage, onClose }) {
 
   async function handleSignOut() {
     try {
@@ -11,21 +11,16 @@ function Sidebar({ user, role, activePage, setActivePage }) {
     }
   }
 
-  // Student menu items
   const studentLinks = [
     { id: "analyze", label: "Analyze Resume", icon: "📄" },
     { id: "history", label: "Past Analyses", icon: "📊" },
     { id: "chat", label: "Career Chat", icon: "💬" },
   ]
 
-  // Recruiter menu items
- 
-    const recruiterLinks = [
-  { id: "analytics", label: "Analyze Resume", icon: "📄" },
-  { id: "nlp", label: "NLP Insights", icon: "🧠" },
-]
-
-  
+  const recruiterLinks = [
+    { id: "analytics", label: "Analyze Resume", icon: "📄" },
+    { id: "nlp", label: "NLP Insights", icon: "🧠" },
+  ]
 
   const links = role === "student" ? studentLinks : recruiterLinks
 
@@ -37,37 +32,54 @@ function Sidebar({ user, role, activePage, setActivePage }) {
       borderRight: "1px solid #1e1e2e",
       display: "flex",
       flexDirection: "column",
-      position: "fixed",
-      top: 0,
-      left: 0,
-      zIndex: 50,
       fontFamily: "'Inter', sans-serif",
     }}>
 
-      {/* Logo */}
+      {/* Logo + close button */}
       <div style={{
-        padding: "20px 20px",
+        padding: "20px",
         borderBottom: "1px solid #1e1e2e",
         display: "flex",
         alignItems: "center",
-        gap: 10,
+        justifyContent: "space-between",
       }}>
-        <div style={{
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          background: "linear-gradient(135deg, #7c3aed, #2563eb)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#fff",
-          fontWeight: 700,
-          fontSize: 14,
-          flexShrink: 0,
-        }}>
-          R
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: "linear-gradient(135deg, #7c3aed, #2563eb)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 14,
+            flexShrink: 0,
+          }}>
+            R
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>ResumeAI</span>
         </div>
-        <span style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>ResumeAI</span>
+
+        {/* Close button — only shows when onClose is provided */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "1px solid #1e1e2e",
+              borderRadius: 6,
+              color: "#6b7280",
+              fontSize: 16,
+              cursor: "pointer",
+              padding: "2px 8px",
+              lineHeight: 1.5,
+            }}
+          >
+            x
+          </button>
+        )}
       </div>
 
       {/* Role badge */}
@@ -126,7 +138,7 @@ function Sidebar({ user, role, activePage, setActivePage }) {
         ))}
       </div>
 
-      {/* User info + sign out at bottom */}
+      {/* User info + sign out */}
       <div style={{
         padding: "16px 20px",
         borderTop: "1px solid #1e1e2e",

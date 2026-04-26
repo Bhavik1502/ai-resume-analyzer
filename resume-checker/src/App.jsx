@@ -16,7 +16,6 @@ function App() {
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activePage, setActivePage] = useState("analyze")
-  // Controls whether sidebar is open or closed
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -66,7 +65,7 @@ function App() {
   return (
     <div style={{ display: "flex", fontFamily: "'Inter', sans-serif" }}>
 
-      {/* Dark overlay when sidebar is open on mobile */}
+      {/* Dark overlay when sidebar is open */}
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -79,7 +78,7 @@ function App() {
         />
       )}
 
-      {/* Sidebar — slides in/out on mobile */}
+      {/* Sidebar — slides in/out */}
       <div style={{
         position: "fixed",
         top: 0,
@@ -96,6 +95,7 @@ function App() {
             setActivePage(page)
             setSidebarOpen(false)
           }}
+          onClose={() => setSidebarOpen(false)}
         />
       </div>
 
@@ -119,7 +119,6 @@ function App() {
           alignItems: "center",
           gap: 12,
         }}>
-          {/* Hamburger button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             style={{
@@ -136,7 +135,6 @@ function App() {
             ☰
           </button>
 
-          {/* App name */}
           <span style={{
             fontSize: 16,
             fontWeight: 700,
@@ -147,7 +145,6 @@ function App() {
             ResumeAI
           </span>
 
-          {/* Role badge */}
           <div style={{
             marginLeft: "auto",
             background: role === "student" ? "#1e1b4b" : "#0f2a1a",
