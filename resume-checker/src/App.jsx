@@ -16,6 +16,8 @@ function App() {
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activePage, setActivePage] = useState("analyze")
+  // Controls whether sidebar is open or closed
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -34,7 +36,6 @@ function App() {
     return () => unsubscribe()
   }, [])
 
-  // When role loads, set the correct default page
   useEffect(() => {
     if (role === "recruiter") {
       setActivePage("analytics")
@@ -64,23 +65,113 @@ function App() {
 
   return (
     <div style={{ display: "flex", fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar
-        user={user}
-        role={role}
-        activePage={activePage}
-        setActivePage={setActivePage}
-      />
+
+      {/* Dark overlay when sidebar is open on mobile */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 40,
+          }}
+        />
+      )}
+
+      {/* Sidebar — slides in/out on mobile */}
       <div style={{
-        marginLeft: 240,
+        position: "fixed",
+        top: 0,
+        left: 0,
+        zIndex: 50,
+        transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 0.25s ease",
+      }}>
+        <Sidebar
+          user={user}
+          role={role}
+          activePage={activePage}
+          setActivePage={(page) => {
+            setActivePage(page)
+            setSidebarOpen(false)
+          }}
+        />
+      </div>
+
+      {/* Main content */}
+      <div style={{
         flex: 1,
         minHeight: "100vh",
         background: "#080810",
       }}>
+
+        {/* Top bar with hamburger button */}
+        <div style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 30,
+          background: "#0d0d14",
+          borderBottom: "1px solid #1e1e2e",
+          padding: "0 16px",
+          height: 56,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}>
+          {/* Hamburger button */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              background: "transparent",
+              border: "1px solid #1e1e2e",
+              borderRadius: 8,
+              padding: "6px 10px",
+              cursor: "pointer",
+              color: "#9ca3af",
+              fontSize: 18,
+              lineHeight: 1,
+            }}
+          >
+            ☰
+          </button>
+
+          {/* App name */}
+          <span style={{
+            fontSize: 16,
+            fontWeight: 700,
+            background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}>
+            ResumeAI
+          </span>
+
+          {/* Role badge */}
+          <div style={{
+            marginLeft: "auto",
+            background: role === "student" ? "#1e1b4b" : "#0f2a1a",
+            border: `1px solid ${role === "student" ? "#3730a3" : "#065f46"}`,
+            borderRadius: 20,
+            padding: "4px 12px",
+            fontSize: 12,
+            color: role === "student" ? "#a78bfa" : "#34d399",
+            fontWeight: 600,
+            textTransform: "capitalize",
+          }}>
+            {role}
+          </div>
+        </div>
+
+        {/* Page content */}
         {activePage === "analyze" && <ResumeChecker user={user} role={role} activePage={activePage} />}
         {activePage === "history" && <PastAnalyses user={user} />}
         {activePage === "chat" && <CareerChat user={user} />}
         {activePage === "analytics" && <RecruiterDashboard user={user} />}
+        {activePage === "nlp" && <RecruiterDashboard user={user} />}
+
       </div>
+
     </div>
   )
 }
